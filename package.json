@@ -1,13 +1,13 @@
 {
   "name": "html-to-pdf-vercel",
   "version": "1.0.0",
-  "description": "Convert HTML to PDF on Vercel using @sparticuz/chromium-min",
+  "description": "Convert HTML to PDF on Vercel",
   "scripts": {
     "dev": "vercel dev"
   },
   "dependencies": {
-    "@sparticuz/chromium-min": "^131.0.1",
-    "puppeteer-core": "^22.15.0",
+    "@sparticuz/chromium": "^123.0.0",
+    "puppeteer-core": "^22.0.0",
     "busboy": "^1.6.0"
   }
 }
