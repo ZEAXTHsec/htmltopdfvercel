@@ -1,12 +1,7 @@
-const chromium = require('@sparticuz/chromium-min');
+const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
 const busboy = require('busboy');
 
-// v131 matches puppeteer-core@22.x — verified to work on Vercel Lambda
-const CHROMIUM_REMOTE_URL =
-  'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar';
-
-// CommonJS config export — must NOT use ESM "export" syntax
 module.exports.config = {
   api: {
     bodyParser: false,
@@ -55,18 +50,11 @@ module.exports = async function handler(req, res) {
   let browser = null;
 
   try {
-    const executablePath = await chromium.executablePath(CHROMIUM_REMOTE_URL);
-
     browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--disable-dev-shm-usage',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-      ],
-      defaultViewport: { width: 1280, height: 900 },
-      executablePath,
-      headless: 'new',
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
