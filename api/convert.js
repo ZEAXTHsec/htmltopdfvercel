@@ -1,6 +1,16 @@
-const chromium = require('@sparticuz/chromium');
+const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 const busboy = require('busboy');
+const path = require('path');
+
+// Self-hosted chromium pack built at deploy time by scripts/pack-chromium.js
+// VERCEL_URL is set automatically by Vercel at runtime
+function getChromiumUrl(req) {
+  const host = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : `http://${req.headers.host}`;
+  return `${host}/chromium-pack.tar`;
+}
 
 module.exports.config = {
   api: {
@@ -40,7 +50,6 @@ module.exports = async function handler(req, res) {
   }
 
   let htmlContent, originalName;
-
   try {
     ({ htmlContent, originalName } = await parseMultipart(req));
   } catch (err) {
@@ -48,18 +57,18 @@ module.exports = async function handler(req, res) {
   }
 
   let browser = null;
-
   try {
+    const chromiumUrl = getChromiumUrl(req);
+
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(chromiumUrl),
       headless: chromium.headless,
     });
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
-
     await page.setContent(htmlContent, { waitUntil: 'networkidle0', timeout: 30000 });
 
     await page.addStyleTag({
@@ -88,9 +97,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).send(pdfBuffer);
 
   } catch (err) {
-    if (browser) {
-      try { await browser.close(); } catch (_) {}
-    }
+    if (browser) { try { await browser.close(); } catch (_) {} }
     return res.status(500).json({ error: err.message });
   }
 };
