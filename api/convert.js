@@ -2,11 +2,12 @@ const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 const busboy = require('busboy');
 
-// Remote chromium binary built for Vercel's Lambda environment
+// v131 matches puppeteer-core@22.x — verified to work on Vercel Lambda
 const CHROMIUM_REMOTE_URL =
-  'https://github.com/Sparticuz/chromium/releases/download/v123.0.0/chromium-v123.0.0-pack.tar';
+  'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar';
 
-export const config = {
+// CommonJS config export — must NOT use ESM "export" syntax
+module.exports.config = {
   api: {
     bodyParser: false,
   },
@@ -54,22 +55,30 @@ module.exports = async function handler(req, res) {
   let browser = null;
 
   try {
+    const executablePath = await chromium.executablePath(CHROMIUM_REMOTE_URL);
+
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+      ],
       defaultViewport: { width: 1280, height: 900 },
-      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
-      headless: chromium.headless,
+      executablePath,
+      headless: 'new',
     });
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
 
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0', timeout: 30000 });
 
     await page.addStyleTag({
       content: `
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         @page { margin: 0; }
+        body { margin: 0; padding: 0; }
       `
     });
 
@@ -91,7 +100,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).send(pdfBuffer);
 
   } catch (err) {
-    if (browser) await browser.close();
+    if (browser) {
+      try { await browser.close(); } catch (_) {}
+    }
     return res.status(500).json({ error: err.message });
   }
 };
