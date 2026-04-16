@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HTML → PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e0e;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --accent: #c8f060;
+      --accent-dim: #9db847;
+      --text: #e8e8e0;
+      --muted: #666;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3rem;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 0 80px rgba(200, 240, 96, 0.04);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 100px;
+      padding: 0.25rem 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-family: 'Fraunces', serif;
+      font-weight: 300;
+      font-size: 2.6rem;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    h1 em { font-style: italic; color: var(--accent); }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }
+
+    .dropzone {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(200, 240, 96, 0.03);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+      display: block;
+      filter: grayscale(1);
+      transition: filter 0.2s;
+    }
+
+    .dropzone:hover .drop-icon { filter: none; }
+
+    .drop-label { font-size: 0.8rem; color: var(--muted); }
+    .drop-label strong { color: var(--accent); font-weight: 500; }
+
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(200, 240, 96, 0.06);
+      border: 1px solid rgba(200, 240, 96, 0.2);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.78rem;
+    }
+
+    .file-info.visible { display: flex; }
+    .file-icon { font-size: 1.2rem; }
+
+    .file-name {
+      flex: 1;
+      color: var(--accent);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-clear {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .file-clear:hover { color: var(--text); }
+
+    .btn {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #0e0e0e;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover:not(:disabled) { background: #d6f570; transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+    .status {
+      margin-top: 1.25rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+      min-height: 1.2em;
+      transition: color 0.2s;
+    }
+
+    .status.error { color: #ff6b6b; }
+    .status.success { color: var(--accent); }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer-note {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.65rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Hosted on Vercel · powered by Chromium</div>
+    <h1>HTML<br>to <em>PDF</em></h1>
+    <p class="subtitle">Full-width, no page breaks, design preserved.<br>Converted in the cloud via a serverless function.</p>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".html,.htm" />
+      <span class="drop-icon">📄</span>
+      <div class="drop-label">
+        <strong>Click to choose</strong> or drag &amp; drop<br>
+        <span>.html / .htm files</span>
+      </div>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <span class="file-icon">📎</span>
+      <span class="file-name" id="fileName"></span>
+      <button class="file-clear" id="fileClear" title="Remove">✕</button>
+    </div>
+
+    <button class="btn" id="convertBtn" disabled>
+      Convert to PDF
+    </button>
+
+    <div class="status" id="status"></div>
+
+    <div class="footer-note">
+      Your file is sent to a serverless function, converted, and immediately deleted — never stored.
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileClear = document.getElementById('fileClear');
+    const convertBtn = document.getElementById('convertBtn');
+    const status = document.getElementById('status');
+
+    let selectedFile = null;
+
+    function setFile(file) {
+      if (!file || !file.name.match(/\.html?$/i)) {
+        setStatus('Please select an .html or .htm file.', 'error');
+        return;
+      }
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileInfo.classList.add('visible');
+      convertBtn.disabled = false;
+      setStatus('');
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.classList.remove('visible');
+      convertBtn.disabled = true;
+      setStatus('');
+    }
+
+    function setStatus(msg, type = '') {
+      status.textContent = msg;
+      status.className = 'status ' + type;
+    }
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    fileClear.addEventListener('click', clearFile);
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      convertBtn.disabled = true;
+      convertBtn.innerHTML = '<span class="spinner"></span> Converting...';
+      setStatus('Rendering your HTML in the cloud...', '');
+
+      const formData = new FormData();
+      formData.append('htmlfile', selectedFile);
+
+      try {
+        const res = await fetch('/api/convert', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(err.error || 'Conversion failed');
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile.name.replace(/\.html?$/i, '.pdf');
+        a.click();
+        URL.revokeObjectURL(url);
+
+        setStatus('✓ Done! PDF downloaded.', 'success');
+        clearFile();
+      } catch (err) {
+        setStatus('Error: ' + err.message, 'error');
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.innerHTML = 'Convert to PDF';
+      }
+    });
+  </script>
+</body>
+</html>
