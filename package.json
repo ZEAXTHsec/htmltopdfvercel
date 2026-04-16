@@ -2,15 +2,16 @@
   "name": "html-to-pdf-vercel",
   "version": "1.0.0",
   "description": "Convert HTML to PDF on Vercel",
-  "engines": {
-    "node": "18.x"
-  },
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "postinstall": "node scripts/pack-chromium.js"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^123.0.0",
+    "@sparticuz/chromium-min": "^131.0.1",
     "puppeteer-core": "^22.0.0",
     "busboy": "^1.6.0"
+  },
+  "devDependencies": {
+    "@sparticuz/chromium": "^131.0.1"
   }
 }
