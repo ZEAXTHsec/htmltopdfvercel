@@ -1,15 +1,17 @@
-const chromium = require('@sparticuz/chromium');
+const chromium = require('@sparticuz/chromium-min');
 const puppeteer = require('puppeteer-core');
 const busboy = require('busboy');
 
-// Disable Vercel's default body parser so we can handle multipart
+// Remote chromium binary built for Vercel's Lambda environment
+const CHROMIUM_REMOTE_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v123.0.0/chromium-v123.0.0-pack.tar';
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Parse multipart form data and extract the HTML file buffer
 function parseMultipart(req) {
   return new Promise((resolve, reject) => {
     const bb = busboy({ headers: req.headers });
@@ -55,17 +57,15 @@ module.exports = async function handler(req, res) {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: { width: 1280, height: 900 },
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
       headless: chromium.headless,
     });
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
 
-    // Load HTML directly from string — no file system needed
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-    // Force exact color reproduction and zero margins
     await page.addStyleTag({
       content: `
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -73,7 +73,6 @@ module.exports = async function handler(req, res) {
       `
     });
 
-    // Measure full rendered height for single-page PDF
     const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
 
     const pdfBuffer = await page.pdf({
